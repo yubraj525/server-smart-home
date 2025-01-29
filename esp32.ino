@@ -5,9 +5,11 @@
 #include <DHT.h>
 
 // Define sensor pins
-#define DHTPIN 4         // DHT11 data pin
+
 #define DHTTYPE DHT11    // Define sensor type
-#define MOISTURE_PIN 34  // Soil moisture sensor analog pin
+#define GAS_SENSOR_PIN 34  // Gas Sensor
+#define MOISTURE_SENSOR_PIN 32  // Moisture Sensor
+#define DHT11_SENSOR_PIN 33  // DHT11 Temperature & Humidity Sensor
 
 DHT dht(DHTPIN, DHTTYPE);  // Initialize DHT sensor
 
@@ -18,26 +20,25 @@ const char* serverUrl = "https://smartmate-api.aasishkarki.com.np/esp-update";  
 WebServer server(8080);
 
 // Pins
-const int hallLightPin = 15;
-const int bedroomLightPin = 2;
-const int kitchenLightPin = 3;
-const int garageLightPin = 6;
+// Define output pins
+const int hallLightPin = 13;
+const int bedroomLightPin = 14;
+const int kitchenLightPin = 16;
+const int garageLightPin = 17;
 
-const int frontDoorPin = 5;
-const int bedroomDoorPin = 23;
-const int kitchenDoorPin = 8;
-const int garageDoorPin = 9;
-
-
+const int frontDoorPin = 18;
+const int bedroomDoorPin = 19;
+const int kitchenDoorPin = 21;
+const int garageDoorPin = 22;
 
 // Additional options
-const int lockPin = 10;
-const int fanPin = 11;
-const int wifiPin = 12;
-const int coffeePin = 13;
-const int powerPin = 14;
+const int lockPin = 23;
+const int fanPin = 25;
+const int wifiPin = 26;
+const int coffeePin = 27;
+const int powerPin = 2;
 const int fridgePin = 4;
-const int choiceTwoPin = 16;
+const int choiceTwoPin = 5;
 // Sensor variables
 float temperature = 0.0;
 float humidity = 0.0;
@@ -103,7 +104,9 @@ void setup() {
   Serial.println("init");
     dht.begin();  // Start DHT11 sensor
   pinMode(MOISTURE_PIN, INPUT);
+  pinMode(GAS_SENSOR_PIN , INPUT);
   pinMode(34, INPUT);
+
 
   pinMode(hallLightPin, OUTPUT);
   pinMode(bedroomDoorPin, OUTPUT);
@@ -195,9 +198,9 @@ void loop() {
   // Simulate sensor data (replace with actual sensor readings)
   // temperature = 10;  // Replace with your temperature sensor logic
 humidity = dht.readHumidity();   // Replace with your humidity sensor logic
-  gasLevel =  analogRead(MOISTURE_PIN);   // Replace with gas sensor logic
+  gasLevel =  analogRead(GAS_SENSOR_PIN);   // Replace with gas sensor logic
   airQuality = 56.0;  // Replace with air quality sensor logic
-  fireDetected = false;
+  fireDetected = true;
 temperature = dht.readTemperature();  // Read one byte from the serial buffer
   hallLightState = digitalRead(hallLightPin);
   bedroomDoorState = digitalRead(bedroomDoorPin);
