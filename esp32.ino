@@ -2,22 +2,29 @@
 #include <WebServer.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
+#include <DHT.h>
 
+// Define sensor pins
+#define DHTPIN 4         // DHT11 data pin
+#define DHTTYPE DHT11    // Define sensor type
+#define MOISTURE_PIN 34  // Soil moisture sensor analog pin
+
+DHT dht(DHTPIN, DHTTYPE);  // Initialize DHT sensor
 
 const char* ssid = "scifi_2.4";
 const char* password = "88888888";
-const char* serverUrl = "http://192.168.1.74:5000/esp-update";  // Replace with your Express server URL
+const char* serverUrl = "https://smartmate-api.aasishkarki.com.np/esp-update";  // Replace with your Express server URL
 
 WebServer server(8080);
 
 // Pins
-const int hallLightPin = 4;
+const int hallLightPin = 15;
 const int bedroomLightPin = 2;
 const int kitchenLightPin = 3;
 const int garageLightPin = 6;
 
-const int mainDoorPin = 5;
-const int bedroomDoorPin = 7;
+const int frontDoorPin = 5;
+const int bedroomDoorPin = 23;
 const int kitchenDoorPin = 8;
 const int garageDoorPin = 9;
 
@@ -29,7 +36,7 @@ const int fanPin = 11;
 const int wifiPin = 12;
 const int coffeePin = 13;
 const int powerPin = 14;
-const int fridgePin = 15;
+const int fridgePin = 4;
 const int choiceTwoPin = 16;
 // Sensor variables
 float temperature = 0.0;
@@ -39,7 +46,7 @@ int airQuality = 0;
 bool fireDetected = false;
 
 int hallLightState = -1;
-int mainDoorState = -1;
+int frontDoorState = -1;
 int bedroomLightState = -1;
 int kitchenLightState = -1;
 int garageLightState = -1;
@@ -60,7 +67,7 @@ float prevHumidity = -1.0;
 int prevGasLevel = -1;
 int prevAirQuality = -1;
 bool prevFireDetected = false;
-int prevMainDoorState = -1;
+int prevfrontDoorState = -1;
 int prevHallLightState = -1;
 int prevBedroomLightState = -1;
 int prevChoiceTwoState = -1;
@@ -94,8 +101,12 @@ std::vector<Light> lights;
 void setup() {
   Serial.begin(9600);
   Serial.println("init");
+    dht.begin();  // Start DHT11 sensor
+  pinMode(MOISTURE_PIN, INPUT);
+  pinMode(34, INPUT);
+
   pinMode(hallLightPin, OUTPUT);
-  pinMode(mainDoorPin, OUTPUT);
+  pinMode(bedroomDoorPin, OUTPUT);
   Serial.println("100");
 
   // pinMode(bedroomLightPin, OUTPUT);
@@ -119,12 +130,20 @@ void setup() {
   // pinMode(powerPin, OUTPUT);
   // pinMode(fridgePin, OUTPUT);
   // pinMode(choiceTwoPin, OUTPUT);
+  //  for(int j=2;j<17;j++){
+  //   pinMode(j, OUTPUT);
+  // }
 
-  Serial.println("1");
+  // for(int i=2;i<17;i++){
+  //    digitalWrite(i, LOW);
+  // }
+
+  // Serial.println("1");
 
   // Initialize relays to default state
-  digitalWrite(hallLightPin, LOW);  // Light off
-  digitalWrite(mainDoorPin, LOW);   // Door locked
+  // digitalWrite(hallLightPin, LOW);    // Light off
+  // digitalWrite(bedroomDoorPin, LOW);  // Door locked
+
   // digitalWrite(bedroomLightPin, LOW);
   // digitalWrite(kitchenLightPin, LOW);
   // digitalWrite(garageLightPin, LOW);
@@ -175,12 +194,14 @@ void loop() {
   server.handleClient();
   // Simulate sensor data (replace with actual sensor readings)
   // temperature = 10;  // Replace with your temperature sensor logic
-  humidity = 34.0;    // Replace with your humidity sensor logic
-  gasLevel = 76.0;    // Replace with gas sensor logic
+humidity = dht.readHumidity();   // Replace with your humidity sensor logic
+  gasLevel =  analogRead(MOISTURE_PIN);   // Replace with gas sensor logic
   airQuality = 56.0;  // Replace with air quality sensor logic
   fireDetected = false;
-  temperature = 22.0;  // Read one byte from the serial buffer
-  hallLightState = 1;
+temperature = dht.readTemperature();  // Read one byte from the serial buffer
+  hallLightState = digitalRead(hallLightPin);
+  bedroomDoorState = digitalRead(bedroomDoorPin);
+
   bool dataChanged = false;  // Flag to track if any value has changed
 
   // Check and update temperature
@@ -230,9 +251,9 @@ void loop() {
   }
 
   // Check and update main door state
-  if (mainDoorState != prevMainDoorState) {
+  if (frontDoorState != prevfrontDoorState) {
 
-    mainDoorState = mainDoorState;
+    frontDoorState = frontDoorState;
     Serial.println("Main Door State changed");
     dataChanged = true;
   }
@@ -381,9 +402,9 @@ void sendSensorData() {
       prevHallLightState = hallLightState;
       url += "hallLight=" + String(hallLightState) + "&";
     }
-    if (mainDoorState != prevMainDoorState) {
-      prevMainDoorState = mainDoorState;
-      url += "mainDoor=" + String(mainDoorState) + "&";
+    if (frontDoorState != prevfrontDoorState) {
+      prevfrontDoorState = frontDoorState;
+      url += "mainDoor=" + String(frontDoorState) + "&";
     }
     if (bedroomLightState != prevBedroomLightState) {
       prevBedroomLightState = bedroomLightState;
@@ -468,62 +489,79 @@ void sendSensorData() {
 
 
 void handleUpdate() {
+  // Create a JSON document to store the incoming data
+  DynamicJsonDocument doc(1024);
+
+  // Parse the incoming JSON request
   if (server.hasArg("plain")) {
     String body = server.arg("plain");
-    DynamicJsonDocument doc(1024);
+    Serial.println(" ");
+    Serial.println(body);
+
+    // Deserialize the JSON data
     DeserializationError error = deserializeJson(doc, body);
 
     if (error) {
-      server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Invalid JSON\"}");
+      // If there's an error in deserialization, send a response indicating failure
+      server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Invalid JSON format\"}");
       return;
     }
 
-    JsonObject updates = doc["updates"];
-    bool dataChanged = false;
+    // Check if the data is related to lights or doors
+    if (doc.containsKey("lights")) {
+      // Handle lights data
+      JsonArray lights = doc["lights"].as<JsonArray>();
 
-    // Process door updates
-    if (updates.containsKey("doors")) {
-      JsonArray doorsArray = updates["doors"];
-      doors.clear();
-      for (JsonObject door : doorsArray) {
-        Door d;
-        d.name = door["name"].as<String>();
-        d.locked = door["locked"];
-        doors.push_back(d);
-        // Update physical pins based on door status
-        updateDoorPin(d.name, d.locked);
-        dataChanged = true;
+      for (JsonObject light : lights) {
+        String lightName = light["name"];
+        bool on = light["on"];
+
+        // if (lightName == "Bedroom") {
+        //   digitalWrite(bedroomLightPin, on ? HIGH : LOW);
+        //   bedroomLightState = on ? 1 : 0;
+        // } else if (lightName == "Kitchen") {
+        //   digitalWrite(kitchenLightPin, on ? HIGH : LOW);
+        //   kitchenLightState = on ? 1 : 0;
+        // } else
+        if (lightName == "Hall") {
+
+          digitalWrite(hallLightPin, on ? HIGH : LOW);
+          hallLightState = on ? 1 : 0;
+          Serial.println(hallLightState);
+        }
       }
-    }
+    } else if (doc.containsKey("doors")) {
+      // Handle doors data
+      JsonArray doors = doc["doors"].as<JsonArray>();
 
-    // Process light updates
-    if (updates.containsKey("lights")) {
-      JsonArray lightsArray = updates["lights"];
-      lights.clear();
-      for (JsonObject light : lightsArray) {
-        Light l;
-        l.name = light["name"].as<String>();
-        l.on = light["on"];
-        lights.push_back(l);
-        // Update physical pins based on light status
-        updateLightPin(l.name, l.on);
-        dataChanged = true;
+      for (JsonObject door : doors) {
+        String doorName = door["name"];
+        bool locked = door["locked"];
+
+        if (doorName == "Bedroom") {
+          digitalWrite(bedroomDoorPin, locked ? HIGH : LOW);
+          bedroomDoorState = locked ? 1 : 0;  // Update the state for Bedroom door
+          Serial.println(bedroomDoorState);
+        }
+        //  else if (doorName == "Kitchen") {
+        //   kitchenDoorState = locked ? 1 : 0; // Update the state for Kitchen door
+        // } else if (doorName == "Hall") {
+        //   hallDoorState = locked ? 1 : 0; // Update the state for Hall door
+        // } else
+        //  if (doorName == "Gate") {
+        //   frontDoorState = locked ? 1 : 0; // Update the state for FrontDoor
+        // }
       }
+    } else {
+      // If neither "lights" nor "doors" is present in the JSON, send an error
+      server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"No lights or doors data found\"}");
+      return;
     }
 
-    // Send success response
-    DynamicJsonDocument response(256);
-    response["status"] = "success";
-    response["message"] = "Updates applied";
-    String responseJson;
-    serializeJson(response, responseJson);
-    server.send(200, "application/json", responseJson);
-
-    // If data changed, send updates back to server
-    if (dataChanged) {
-      sendSensorData();
-    }
+    // Send a success response after processing the data
+    server.send(200, "application/json", "{\"status\":\"success\"}");
   } else {
-    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"No data received\"}");
+    // If no data was provided
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"No data provided\"}");
   }
 }

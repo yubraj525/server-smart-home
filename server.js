@@ -7,6 +7,7 @@ const { default: axios } = require("axios");
 
 const app = express();
 const port = 5000;
+const esp32Url = "http://192.168.1.101:8080/update"; // Replace with ESP32 IP address
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -168,9 +169,7 @@ function broadcastUpdate(updateData) {
     }
   });
 }
-
 async function notifyESP32(update) {
-  const esp32Url = "http://192.168.1.102:8080/update"; // Replace with ESP32 IP address
   const params = {};
 
   if (update.doors) {
