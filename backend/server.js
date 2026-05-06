@@ -4,7 +4,7 @@ const cors = require("cors");
 const { WebSocketServer, WebSocket } = require("ws");
 const config = require("./config");
 
-const VALID_DEVICES = new Set(["light", "fan", "door", "ac"]);
+const VALID_DEVICES = new Set(["light1", "light2", "light3", "light4", "fan", "door", "ac"]);
 const VALID_STATES = new Set(["on", "off"]);
 
 const app = express();
@@ -21,7 +21,10 @@ const clients = {
 
 const state = {
   devices: {
-    light: "off",
+    light1: "off", // Living Room
+    light2: "off", // Bedroom
+    light3: "off", // Kitchen
+    light4: "off", // Hall
     fan: "off",
     door: "off",
     ac: "off",

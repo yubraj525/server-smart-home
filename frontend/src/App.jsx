@@ -25,7 +25,11 @@ import { API_BASE_URL, WS_URL } from "./config";
 
 const DEFAULT_STATE = {
   devices: {
-    light: "off",
+    // Four individually-controllable lights
+    light1: "off", // Living Room
+    light2: "off", // Bedroom
+    light3: "off", // Kitchen
+    light4: "off", // Hall
     fan: "off",
     door: "off",
     ac: "off",
@@ -43,7 +47,6 @@ const DEFAULT_STATE = {
   },
   updatedAt: null,
 };
-
 const SENSOR_META = {
   temperature: {
     label: "Temperature",
@@ -418,51 +421,130 @@ function HomeTexture({ sensors, isConnected }) {
   );
 }
 
-function LightControl({ devices, sendMessage }) {
-  const isOn = devices.light === "on";
 
-  function toggleLight() {
+function LightControl({ devices, sendMessage }) {
+  const lights = [
+    { key: "light1", name: "Living Room" },
+    { key: "light2", name: "Bedroom" },
+    { key: "light3", name: "Kitchen" },
+    { key: "light4", name: "Hall" },
+  ];
+
+  function toggleLight(device, currentState) {
     sendMessage({
       type: "device_control",
-      device: "light",
-      state: isOn ? "off" : "on",
+      device,
+      state: currentState === "on" ? "off" : "on",
+    });
+  }
+
+  function turnOffAllLights() {
+    lights.forEach((light) => {
+      if (devices[light.key] === "on") {
+        sendMessage({
+          type: "device_control",
+          device: light.key,
+          state: "off",
+        });
+      }
     });
   }
 
   return (
-    <section className={`rounded-3xl border p-5 shadow-soft transition ${isOn ? "border-yellow-200 bg-yellow-50" : "border-white/70 bg-white/80"}`}>
-      <div className="flex items-center justify-between">
+    <section className="rounded-3xl border border-white/70 bg-white/80 p-4 shadow-soft transition">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-bold text-slate-500">Light Configuration</p>
-          <h2 className="mt-1 text-2xl font-black text-slate-950">Room Light</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
+            Light Configuration
+          </p>
+          <h2 className="mt-1 text-lg font-black text-slate-950">Room Lights</h2>
         </div>
+
         <button
-          className={`relative h-9 w-16 rounded-full p-1 transition ${isOn ? "bg-yellow-400" : "bg-slate-200"}`}
-          onClick={toggleLight}
+          className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-bold text-white transition hover:bg-slate-800"
+          onClick={turnOffAllLights}
           type="button"
-          aria-label="Toggle room light"
         >
-          <span className={`block h-7 w-7 rounded-full bg-white shadow transition ${isOn ? "translate-x-7" : "translate-x-0"}`} />
+          Off All
         </button>
       </div>
 
-      <button
-        className={`mt-6 grid h-52 w-full place-items-center rounded-3xl border transition ${isOn ? "border-yellow-300 bg-yellow-100 text-yellow-500 shadow-glow" : "border-slate-200 bg-white/50 text-slate-300"}`}
-        onClick={toggleLight}
-        type="button"
-      >
-        <Lightbulb size={104} strokeWidth={1.35} fill={isOn ? "#fde047" : "transparent"} />
-      </button>
+      <div className="mt-4 grid gap-2">
+        {lights.map((light) => {
+          const isOn = devices[light.key] === "on";
 
-      <div className="mt-4 flex items-center justify-between rounded-2xl bg-white/75 px-4 py-3">
-        <span className="text-sm font-bold text-slate-500">Current state</span>
-        <span className={`rounded-full px-3 py-1 text-sm font-black ${isOn ? "bg-yellow-300 text-yellow-950" : "bg-slate-200 text-slate-600"}`}>
-          {isOn ? "ON" : "OFF"}
-        </span>
+          return (
+            <article
+              key={light.key}
+              className={`rounded-2xl border p-3 shadow-sm transition ${
+                isOn
+                  ? "border-yellow-200 bg-yellow-50"
+                  : "border-slate-200 bg-white"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-slate-900">
+                    {light.name}
+                  </p>
+                  <p className="mt-0.5 text-xs font-medium text-slate-500">
+                    {isOn ? "Light is on" : "Light is off"}
+                  </p>
+                </div>
+
+                <button
+                  className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border transition ${
+                    isOn
+                      ? "border-yellow-300 bg-yellow-100 text-yellow-500 shadow-[0_0_20px_rgba(250,204,21,0.35)]"
+                      : "border-slate-200 bg-slate-50 text-slate-300"
+                  }`}
+                  onClick={() => toggleLight(light.key, devices[light.key])}
+                  type="button"
+                  aria-label={`Toggle ${light.name}`}
+                >
+                  <Lightbulb
+                    size={20}
+                    strokeWidth={1.7}
+                    color={isOn ? "#eab308" : "currentColor"}
+                    fill={isOn ? "#fde047" : "transparent"}
+                  />
+                </button>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-black ${
+                    isOn
+                      ? "bg-yellow-300 text-yellow-950"
+                      : "bg-slate-200 text-slate-600"
+                  }`}
+                >
+                  {isOn ? "ON" : "OFF"}
+                </span>
+
+                <button
+                  className={`relative h-7 w-12 rounded-full p-1 transition ${
+                    isOn ? "bg-yellow-400" : "bg-slate-200"
+                  }`}
+                  onClick={() => toggleLight(light.key, devices[light.key])}
+                  type="button"
+                  aria-label={`Switch ${light.name}`}
+                >
+                  <span
+                    className={`block h-5 w-5 rounded-full bg-white shadow transition ${
+                      isOn ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
 }
+
 
 function DeviceRail({ devices, sendMessage }) {
   const [newDevice, setNewDevice] = useState("");
@@ -494,7 +576,7 @@ function DeviceRail({ devices, sendMessage }) {
       </div>
       <div className="grid grid-cols-2 gap-3">
         {Object.entries(devices)
-          .filter(([device]) => device !== "light")
+          .filter(([key, val]) => !key.startsWith("light") && typeof val === "string")
           .map(([device, state]) => {
             const meta = DEVICE_META[device] || { label: device.replaceAll("_", " "), icon: Power };
             const Icon = meta.icon;
