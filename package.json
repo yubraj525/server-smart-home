@@ -1,0 +1,21 @@
+{
+  "name": "esp-iot-smarthome",
+  "version": "1.0.0",
+  "description": "ESP32, WebSocket backend, and React dashboard home automation system.",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "node backend/server.js",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "start": "node backend/server.js",
+    "build": "npm --prefix frontend run build"
+  },
+  "dependencies": {
+    "concurrently": "^9.1.2",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {}
+}
